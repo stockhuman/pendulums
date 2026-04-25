@@ -1,0 +1,70 @@
+services:
+  pendulum1:
+    build: ./pendulum-srv
+    ports: ['3001:3001']
+    environment:
+      PORT: 3001
+      ANCHOR: -2
+      INITIAL_ANGLE: 0.6
+      MASS: 1.0
+      STRING_LENGTH: 1.2
+      PEER_URLS: http://pendulum2:3002,http://pendulum3:3003,http://pendulum4:3004,http://pendulum5:3005
+      CORS_ORIGIN: http://localhost:5173
+
+  pendulum2:
+    build: ./pendulum-srv
+    ports: ['3002:3002']
+    environment:
+      PORT: 3002
+      ANCHOR: -1
+      INITIAL_ANGLE: 1.0
+      MASS: 2.0
+      STRING_LENGTH: 0.8
+      PEER_URLS: http://pendulum1:3001,http://pendulum3:3003,http://pendulum4:3004,http://pendulum5:3005
+      CORS_ORIGIN: http://localhost:5173
+
+  pendulum3:
+    build: ./pendulum-srv
+    ports: ['3003:3003']
+    environment:
+      PORT: 3003
+      ANCHOR: 0
+      INITIAL_ANGLE: 0.4
+      MASS: 0.5
+      STRING_LENGTH: 1.5
+      PEER_URLS: http://pendulum1:3001,http://pendulum2:3002,http://pendulum4:3004,http://pendulum5:3005
+      CORS_ORIGIN: http://localhost:5173
+
+  pendulum4:
+    build: ./pendulum-srv
+    ports: ['3004:3004']
+    environment:
+      PORT: 3004
+      ANCHOR: 1
+      INITIAL_ANGLE: 0.8
+      MASS: 1.5
+      STRING_LENGTH: 1.0
+      PEER_URLS: http://pendulum1:3001,http://pendulum2:3002,http://pendulum3:3003,http://pendulum5:3005
+      CORS_ORIGIN: http://localhost:5173
+
+  pendulum5:
+    build: ./pendulum-srv
+    ports: ['3005:3005']
+    environment:
+      PORT: 3005
+      ANCHOR: 2
+      INITIAL_ANGLE: 1.2
+      MASS: 0.8
+      STRING_LENGTH: 0.6
+      PEER_URLS: http://pendulum1:3001,http://pendulum2:3002,http://pendulum3:3003,http://pendulum4:3004
+      CORS_ORIGIN: http://localhost:5173
+
+  web:
+    build: ./pendulum-web
+    ports: ['5173:5173']
+    depends_on:
+      - pendulum1
+      - pendulum2
+      - pendulum3
+      - pendulum4
+      - pendulum5
