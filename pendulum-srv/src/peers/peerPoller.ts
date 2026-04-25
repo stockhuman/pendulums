@@ -1,4 +1,5 @@
 import type { PendulumState } from '@/api/pendulum/pendulumModel'
+import { logger } from '@/server'
 
 export interface PeerPollerConfig {
   peerUrls: string[]
@@ -31,17 +32,29 @@ export class PeerPoller {
   }
 
   receiveRestart(fromUrl: string): void {
-    // Called by POST /control { command: 'restart' } when received from a peer
-    // TODO: add fromUrl to restartAcks; when restartAcks.size === peerUrls.length,
-    // call onAllPeersRestarted() to trigger the 5-second countdown
-    throw new Error('not implemented')
+    this.restartAcks.add(fromUrl)
+    if (this.restartAcks.size === this.config.peerUrls.length) {
+      this.config.onAllPeersRestarted()
+    }
   }
 
   private async pollPeers(): Promise<void> {
-    // TODO: fetch GET /state from each peer URL in parallel (Promise.allSettled)
-    // For each successful response, call checkCollision(ownState, peerState)
-    // if any collision detected call broadcastStop() then config.onCollision()
-    throw new Error('not implemented')
+    await Promise.allSettled(
+      this.config.peerUrls.map(async (url) => {
+        try {
+          const response = await fetch(url + '/state')
+          if (!response.ok) throw new Error('HTTP error ' + response.status)
+          const state = await response.json()
+          const ownState = this.getOwnState?.()
+          if (ownState && this.checkCollision(ownState, state)) {
+            this.broadcastStop()
+            this.config.onCollision()
+          }
+        } catch (error) {
+          logger.error(`Error fetching state from ${url}: ${error}`)
+        }
+      }),
+    )
   }
 
   private checkCollision(own: PendulumState, peer: PendulumState): boolean {
@@ -50,13 +63,40 @@ export class PeerPoller {
   }
 
   private async broadcastStop(): Promise<void> {
-    // TODO: POST /control { command: 'stop' } to all peers
-    throw new Error('not implemented')
+    await Promise.allSettled(
+      this.config.peerUrls.map(async (url) => {
+        try {
+          const response = await fetch(url + '/control', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ command: 'stop' }),
+          })
+          if (!response.ok) throw new Error('HTTP error ' + response.status)
+        } catch (error) {
+          logger.error(`Error broadcasting stop to ${url}: ${error}`)
+        }
+      }),
+    )
   }
 
-  broadcastRestart(): Promise<void> {
-    // TODO: POST /control { command: 'restart' } to all peers
-    // Also add own URL to restartAcks and check quorum is already met
-    throw new Error('not implemented')
+  async broadcastRestart(): Promise<void> {
+    await Promise.allSettled(
+      this.config.peerUrls.map(async (url) => {
+        try {
+          const response = await fetch(url + '/control', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ command: 'restart' }),
+          })
+          if (!response.ok) throw new Error('HTTP error ' + response.status)
+          this.restartAcks.add(url)
+          if (this.restartAcks.size === this.config.peerUrls.length) {
+            this.config.onAllPeersRestarted()
+          }
+        } catch (error) {
+          logger.error(`Error broadcasting restart to ${url}: ${error}`)
+        }
+      }),
+    )
   }
 }

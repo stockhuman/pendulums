@@ -62,14 +62,46 @@ export class PendulumEngine extends EventEmitter {
   }
 
   private buildInitialState(): PendulumState {
-    // TODO: derive x,y tip position from anchor + angle + stringLength
-    throw new Error('not implemented')
+    const { anchor, initialAngle, stringLength } = this.config
+    return {
+      angle: initialAngle,
+      angularVelocity: 0,
+      x: anchor + stringLength * Math.sin(initialAngle),
+      y: -stringLength * Math.cos(initialAngle),
+      status: 'stopped',
+    }
   }
 
-  private tick(_dt: number): void {
-    // TODO: swing the pendulum, update state, emit SSE clients
-    throw new Error('not implemented')
-    // this.emit('state', this.getState())
+  // largely derived from https://stackoverflow.com/questions/64157573/
+  private tick(dt: number): void {
+    const { anchor, stringLength } = this.config
+    const { angle: theta, angularVelocity: omega } = this.state
+    const G = 9.81
+
+    const omegaDot = (th: number) => -(G / stringLength) * Math.sin(th)
+    const thetaDot = (om: number) => om
+
+    const aOmega = omegaDot(theta)
+    const aTheta = thetaDot(omega)
+    const bOmega = omegaDot(theta + 0.5 * dt * aTheta)
+    const bTheta = thetaDot(omega + 0.5 * dt * aOmega)
+    const cOmega = omegaDot(theta + 0.5 * dt * bTheta)
+    const cTheta = thetaDot(omega + 0.5 * dt * bOmega)
+    const dOmega = omegaDot(theta + dt * cTheta)
+    const dTheta = thetaDot(omega + dt * cOmega)
+
+    const newOmega = omega + (dt / 6) * (aOmega + 2 * bOmega + 2 * cOmega + dOmega)
+    const newTheta = theta + (dt / 6) * (aTheta + 2 * bTheta + 2 * cTheta + dTheta)
+
+    this.state = {
+      ...this.state,
+      angle: newTheta,
+      angularVelocity: newOmega,
+      x: anchor + stringLength * Math.sin(newTheta),
+      y: -stringLength * Math.cos(newTheta),
+    }
+
+    this.emit('state', this.getState())
   }
 
   private setStatus(status: PendulumStatus): void {
