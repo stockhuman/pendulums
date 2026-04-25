@@ -49,6 +49,14 @@ export class PendulumEngine extends EventEmitter {
     this.start()
   }
 
+  configure(updates: Partial<Pick<PendulumConfig, 'initialAngle' | 'mass' | 'stringLength'>>): void {
+    if (this.state.status !== 'stopped')
+      throw new Error('Cannot configure while running — stop the pendulum first')
+    this.config = { ...this.config, ...updates }
+    this.state = this.buildInitialState()
+    this.emit('state', this.getState())
+  }
+
   private buildInitialState(): PendulumState {
     // TODO: derive x,y tip position from anchor + angle + stringLength
     throw new Error('not implemented')
