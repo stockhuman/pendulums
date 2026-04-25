@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express'
 import { engine, poller } from '@/state'
-import { parseControlCommand, parseConfigureBody } from './pendulumModel'
+import { parseControlCommand, parseConfigBody } from './pendulumModel'
 import type { PendulumState } from './pendulumModel'
 
 export function getState(_req: Request, res: Response): void {
@@ -32,8 +32,12 @@ export function postControl(req: Request, res: Response): void {
   res.json({ ok: true, status: engine.getState().status })
 }
 
-export function postConfigure(req: Request, res: Response): void {
-  const body = parseConfigureBody(req.body)
+export function getConfig(_req: Request, res: Response): void {
+  res.json(engine.getConfig())
+}
+
+export function postConfig(req: Request, res: Response): void {
+  const body = parseConfigBody(req.body)
   if (!body) {
     res.status(400).json({ error: 'body must be { angle?, mass?, stringLength? } with valid numeric values' })
     return

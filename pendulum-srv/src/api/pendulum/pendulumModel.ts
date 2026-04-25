@@ -12,16 +12,16 @@ export type ControlCommand = 'start' | 'pause' | 'stop' | 'restart'
 
 const VALID_COMMANDS = new Set<ControlCommand>(['start', 'pause', 'stop', 'restart'])
 
-export interface ConfigureBody {
+export interface ConfigBody {
   angle?: number
   mass?: number
   stringLength?: number
 }
 
-export function parseConfigureBody(body: unknown): ConfigureBody | null {
+export function parseConfigBody(body: unknown): ConfigBody | null {
   if (typeof body !== 'object' || body === null) return null
   const b = body as Record<string, unknown>
-  const result: ConfigureBody = {}
+  const result: ConfigBody = {}
   if (b.angle !== undefined) {
     if (typeof b.angle !== 'number') return null
     result.angle = b.angle
@@ -40,7 +40,5 @@ export function parseConfigureBody(body: unknown): ConfigureBody | null {
 export function parseControlCommand(body: unknown): ControlCommand | null {
   if (typeof body !== 'object' || body === null) return null
   const cmd = (body as Record<string, unknown>).command
-  return typeof cmd === 'string' && VALID_COMMANDS.has(cmd as ControlCommand)
-    ? (cmd as ControlCommand)
-    : null
+  return typeof cmd === 'string' && VALID_COMMANDS.has(cmd as ControlCommand) ? (cmd as ControlCommand) : null
 }

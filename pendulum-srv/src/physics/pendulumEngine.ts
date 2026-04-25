@@ -25,6 +25,10 @@ export class PendulumEngine extends EventEmitter {
     return { ...this.state }
   }
 
+  getConfig(): PendulumConfig {
+    return { ...this.config }
+  }
+
   start(): void {
     if (this.intervalId || this.state.status === 'running') return
     this.setStatus('running')
