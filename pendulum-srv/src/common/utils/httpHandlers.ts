@@ -1,13 +1,16 @@
+import { ServiceResponse } from '@common/models/serviceResponse'
 import type { NextFunction, Request, Response } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import { ZodError, type ZodType } from 'zod'
 
-import { ServiceResponse } from '@common/models/serviceResponse'
-
 export const validateRequest =
   (schema: ZodType) => async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await schema.parseAsync({ body: req.body, query: req.query, params: req.params })
+      await schema.parseAsync({
+        body: req.body,
+        query: req.query,
+        params: req.params,
+      })
       next()
     } catch (err) {
       if (!(err instanceof ZodError)) throw err
