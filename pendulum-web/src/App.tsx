@@ -7,6 +7,7 @@ import HUD from './components/HUD'
 import Pendulum from './components/Pendulum'
 import { useSnapshot } from 'valtio'
 import { store } from './store/servers'
+import Bar from './components/Bar'
 
 function App() {
   useEffect(() => {
@@ -17,6 +18,7 @@ function App() {
     <AppWrapper>
       <Settings />
       <Canvas>
+        <Bar />
         <Pendulums />
       </Canvas>
       <HUD />
