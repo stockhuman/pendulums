@@ -1,10 +1,12 @@
+import type { PendulumConfig } from '@/physics/pendulumEngine'
 import type { PendulumState } from '@/api/pendulum/pendulumModel'
 import { logger } from '@/server'
+
+const MASS_TO_RADIUS = 0.15 // Matches frontend 0.15 * mass
 
 export interface PeerPollerConfig {
   peerUrls: string[]
   pollIntervalMs: number
-  collisionThreshold: number
   onCollision: () => void
   onAllPeersRestarted: () => void
 }
@@ -14,13 +16,17 @@ export class PeerPoller {
   private intervalId: NodeJS.Timeout | null = null
   private restartAcks: Set<string> = new Set()
   private getOwnState: (() => PendulumState) | null = null
+  private getOwnConfig: (() => PendulumConfig) | null = null
+  private peerMasses: Map<string, number> = new Map()
 
   constructor(config: PeerPollerConfig) {
     this.config = config
   }
 
-  start(getOwnState: () => PendulumState): void {
+  start(getOwnState: () => PendulumState, getOwnConfig: () => PendulumConfig): void {
     this.getOwnState = getOwnState
+    this.getOwnConfig = getOwnConfig
+    this.fetchPeerConfigs()
     this.intervalId = setInterval(() => this.pollPeers(), this.config.pollIntervalMs)
   }
 
@@ -38,16 +44,33 @@ export class PeerPoller {
     }
   }
 
+  private async fetchPeerConfigs(): Promise<void> {
+    await Promise.allSettled(
+      this.config.peerUrls.map(async (url) => {
+        try {
+          const res = await fetch(url + '/config')
+          if (!res.ok) return
+          const cfg: PendulumConfig = await res.json()
+          this.peerMasses.set(url, cfg.mass)
+        } catch (error) {
+          logger.warn(`Could not fetch config from ${url}: ${error}`)
+        }
+      }),
+    )
+  }
+
   private async pollPeers(): Promise<void> {
     await Promise.allSettled(
       this.config.peerUrls.map(async (url) => {
         try {
           const response = await fetch(url + '/state')
           if (!response.ok) throw new Error('HTTP error ' + response.status)
-          const state = await response.json()
+          const peerState: PendulumState = await response.json()
           const ownState = this.getOwnState?.()
-          if (ownState && this.checkCollision(ownState, state)) {
-            this.broadcastStop()
+          const ownMass = this.getOwnConfig?.().mass ?? 1
+          const peerMass = this.peerMasses.get(url) ?? 1
+          if (ownState && this.checkCollision(ownState, ownMass, peerState, peerMass)) {
+            await this.broadcastStop()
             this.config.onCollision()
           }
         } catch (error) {
@@ -57,9 +80,17 @@ export class PeerPoller {
     )
   }
 
-  private checkCollision(own: PendulumState, peer: PendulumState): boolean {
-    // TODO: distance between tip (x,y) positions < collisionThreshold
-    throw new Error('not implemented')
+  private checkCollision(
+    own: PendulumState,
+    ownMass: number,
+    peer: PendulumState,
+    peerMass: number,
+  ): boolean {
+    const dx = own.x - peer.x
+    const dy = own.y - peer.y
+    const distance = Math.sqrt(dx * dx + dy * dy)
+    const combinedRadius = MASS_TO_RADIUS * (ownMass + peerMass)
+    return distance < combinedRadius
   }
 
   private async broadcastStop(): Promise<void> {

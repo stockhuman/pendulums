@@ -12,7 +12,6 @@ export const engine = new PendulumEngine({
 export const poller = new PeerPoller({
   peerUrls: env.PEER_URLS ? env.PEER_URLS.split(',').filter(Boolean) : [],
   pollIntervalMs: env.PEER_POLL_INTERVAL_MS,
-  collisionThreshold: env.COLLISION_THRESHOLD,
   onCollision: () => {
     engine.stop()
     poller.broadcastRestart()
