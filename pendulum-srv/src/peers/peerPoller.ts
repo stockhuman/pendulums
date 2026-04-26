@@ -17,7 +17,8 @@ export class PeerPoller {
   private isHandlingCollision = false
   private getOwnState: (() => PendulumState) | null = null
   private getOwnConfig: (() => PendulumConfig) | null = null
-  private peerMasses: Map<string, number> = new Map()
+  private peerConfigs: Map<string, PendulumConfig> = new Map()
+  private unreachablePeers: Set<string> = new Set()
 
   constructor(config: PeerPollerConfig) {
     this.config = config
@@ -46,13 +47,26 @@ export class PeerPoller {
   }
 
   private async fetchPeerConfigs(): Promise<void> {
+    const ownCfg = this.getOwnConfig?.()
     await Promise.allSettled(
       this.config.peerUrls.map(async (url) => {
         try {
           const res = await fetch(url + '/config')
           if (!res.ok) return
           const cfg: PendulumConfig = await res.json()
-          this.peerMasses.set(url, cfg.mass)
+          this.peerConfigs.set(url, cfg)
+
+          if (ownCfg) {
+            const anchorDist = Math.abs(ownCfg.anchor - cfg.anchor)
+            const maxReach = ownCfg.stringLength + cfg.stringLength
+            const combinedRadius = MASS_TO_RADIUS * (ownCfg.mass + cfg.mass)
+            if (anchorDist - maxReach > combinedRadius) {
+              this.unreachablePeers.add(url)
+              logger.info(
+                `Peer ${url} @anchor=${cfg.anchor} is geometrically unreachable — skipping collision polling`,
+              )
+            }
+          }
         } catch (error) {
           logger.warn(`Could not fetch config from ${url}: ${error}`)
         }
@@ -64,13 +78,14 @@ export class PeerPoller {
     if (this.isHandlingCollision) return
     await Promise.allSettled(
       this.config.peerUrls.map(async (url) => {
+        if (this.unreachablePeers.has(url)) return
         try {
           const response = await fetch(url + '/state')
           if (!response.ok) throw new Error('HTTP error ' + response.status)
           const peerState: PendulumState = await response.json()
           const ownState = this.getOwnState?.()
           const ownMass = this.getOwnConfig?.().mass ?? 1
-          const peerMass = this.peerMasses.get(url) ?? 1
+          const peerMass = this.peerConfigs.get(url)?.mass ?? 1
           if (
             !this.isHandlingCollision &&
             ownState &&
