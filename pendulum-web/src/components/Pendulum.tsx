@@ -9,16 +9,15 @@ interface Props {
 
 export default function Pendulum({ index }: Props) {
   const bobRef = useRef<Mesh>(null!)
+  const config = store.servers[index]?.config
+  const anchorX = config?.anchor ?? 0
+  const mass = config?.mass ?? 1
 
   useFrame(() => {
     const { state } = store.servers[index] ?? {}
     if (!state || !bobRef.current) return
-    bobRef.current.position.set(state.x, state.y, 0)
+    bobRef.current.position.set(state.x - anchorX, state.y, 0)
   })
-
-  const config = store.servers[index]?.config
-  const anchorX = config?.anchor ?? 0
-  const mass = config?.mass ?? 1
 
   return (
     <group position={[anchorX, 0, 0]}>
