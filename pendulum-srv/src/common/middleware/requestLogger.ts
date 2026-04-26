@@ -35,11 +35,8 @@ const httpLogger = pinoHttp({
   customSuccessMessage: (req) => `${req.method} ${req.url} completed`,
   customErrorMessage: (_req, res) => `Request failed with status code: ${res.statusCode}`,
   serializers: {
-    req: (req) => ({
-      method: req.method,
-      url: req.url,
-      id: req.id,
-    }),
+    req: (req) => ({ method: req.method, url: req.url, id: req.id }),
+    res: (res) => ({ statusCode: res.statusCode }),
   },
 })
 

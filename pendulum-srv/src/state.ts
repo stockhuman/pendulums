@@ -14,9 +14,17 @@ export const poller = new PeerPoller({
   pollIntervalMs: env.PEER_POLL_INTERVAL_MS,
   onCollision: () => {
     engine.stop()
+    poller.stop()
     poller.broadcastRestart()
   },
   onAllPeersRestarted: () => {
-    setTimeout(() => engine.restart(), 5000)
+    setTimeout(() => {
+      poller.reset()
+      engine.restart()
+      poller.start(
+        () => engine.getState(),
+        () => engine.getConfig(),
+      )
+    }, 5000)
   },
 })

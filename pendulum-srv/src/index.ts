@@ -11,11 +11,14 @@ const server = app.listen(env.PORT, () => {
     () => engine.getConfig(),
   )
 })
+// This silences a spurious warning by setting a sensible default.
+server.setMaxListeners(30)
 
 const onCloseSignal = () => {
   logger.info('sigint received, shutting down')
   engine.stop()
   poller.stop()
+  server.closeAllConnections()
   server.close(() => {
     logger.info('server closed')
     process.exit()
@@ -23,5 +26,5 @@ const onCloseSignal = () => {
   setTimeout(() => process.exit(1), 10000).unref()
 }
 
-process.on('SIGINT', onCloseSignal)
-process.on('SIGTERM', onCloseSignal)
+process.once('SIGINT', onCloseSignal)
+process.once('SIGTERM', onCloseSignal)

@@ -14,7 +14,7 @@ export interface PeerPollerConfig {
 export class PeerPoller {
   private config: PeerPollerConfig
   private intervalId: NodeJS.Timeout | null = null
-  private restartAcks: Set<string> = new Set()
+  private isHandlingCollision = false
   private getOwnState: (() => PendulumState) | null = null
   private getOwnConfig: (() => PendulumConfig) | null = null
   private peerMasses: Map<string, number> = new Map()
@@ -37,11 +37,12 @@ export class PeerPoller {
     }
   }
 
-  receiveRestart(fromUrl: string): void {
-    this.restartAcks.add(fromUrl)
-    if (this.restartAcks.size === this.config.peerUrls.length) {
-      this.config.onAllPeersRestarted()
-    }
+  reset(): void {
+    this.isHandlingCollision = false
+  }
+
+  receiveRestart(): void {
+    this.config.onAllPeersRestarted()
   }
 
   private async fetchPeerConfigs(): Promise<void> {
@@ -60,6 +61,7 @@ export class PeerPoller {
   }
 
   private async pollPeers(): Promise<void> {
+    if (this.isHandlingCollision) return
     await Promise.allSettled(
       this.config.peerUrls.map(async (url) => {
         try {
@@ -69,7 +71,12 @@ export class PeerPoller {
           const ownState = this.getOwnState?.()
           const ownMass = this.getOwnConfig?.().mass ?? 1
           const peerMass = this.peerMasses.get(url) ?? 1
-          if (ownState && this.checkCollision(ownState, ownMass, peerState, peerMass)) {
+          if (
+            !this.isHandlingCollision &&
+            ownState &&
+            this.checkCollision(ownState, ownMass, peerState, peerMass)
+          ) {
+            this.isHandlingCollision = true
             await this.broadcastStop()
             this.config.onCollision()
           }
@@ -120,14 +127,12 @@ export class PeerPoller {
             body: JSON.stringify({ command: 'restart' }),
           })
           if (!response.ok) throw new Error('HTTP error ' + response.status)
-          this.restartAcks.add(url)
-          if (this.restartAcks.size === this.config.peerUrls.length) {
-            this.config.onAllPeersRestarted()
-          }
         } catch (error) {
           logger.error(`Error broadcasting restart to ${url}: ${error}`)
         }
       }),
     )
+    // All peers have been notified (or failed gracefully); schedule own restart.
+    this.config.onAllPeersRestarted()
   }
 }
