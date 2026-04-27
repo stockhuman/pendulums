@@ -1,5 +1,5 @@
 import { Canvas as R3FCanvas } from '@react-three/fiber'
-import { Environment, OrbitControls } from '@react-three/drei'
+import { Environment } from '@react-three/drei'
 import styled from 'styled-components'
 
 export default function Canvas({ children }: { children?: React.ReactNode }) {
@@ -12,7 +12,6 @@ export default function Canvas({ children }: { children?: React.ReactNode }) {
         <planeGeometry args={[1000, 100]} />
         <meshStandardMaterial color="#1b1717" roughness={1} />
       </mesh>
-      <OrbitControls />
     </StyledCanvas>
   )
 }
