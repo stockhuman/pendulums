@@ -14,7 +14,7 @@ export default function HUD() {
         <ControlButton onClick={() => broadcastControl(anyRunning ? 'stop' : 'start')}>
           {anyRunning ? 'Stop' : 'Start'}
         </ControlButton>
-        <ControlButton secondary onClick={() => broadcastControl('pause')} disabled={!anyRunning}>
+        <ControlButton $secondary onClick={() => broadcastControl('pause')} disabled={!anyRunning}>
           Pause
         </ControlButton>
       </Controls>
@@ -27,17 +27,17 @@ const Controls = styled.div`
   gap: 0.5rem;
 `
 
-const ControlButton = styled.button<{ secondary?: boolean }>`
+const ControlButton = styled.button<{ $secondary?: boolean }>`
   padding: 0.5rem 1.5rem;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.9rem;
-  background: ${({ secondary }) => (secondary ? '#334155' : '#6366f1')};
-  color: ${({ secondary }) => (secondary ? '#cbd5e1' : 'white')};
+  background: ${({ $secondary }) => ($secondary ? '#334155' : '#6366f1')};
+  color: ${({ $secondary }) => ($secondary ? '#cbd5e1' : 'white')};
   opacity: ${({ disabled }) => (disabled ? 0.4 : 1)};
   pointer-events: ${({ disabled }) => (disabled ? 'none' : 'auto')};
   &:hover {
-    background: ${({ secondary }) => (secondary ? '#475569' : '#4f46e5')};
+    background: ${({ $secondary }) => ($secondary ? '#475569' : '#4f46e5')};
   }
 `
