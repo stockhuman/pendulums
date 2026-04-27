@@ -47,6 +47,7 @@ export function postConfig(req: Request, res: Response): void {
     return
   }
   engine.configure({
+    ...(body.anchor !== undefined && { anchor: body.anchor }),
     ...(body.angle !== undefined && { initialAngle: body.angle }),
     ...(body.mass !== undefined && { mass: body.mass }),
     ...(body.stringLength !== undefined && { stringLength: body.stringLength }),

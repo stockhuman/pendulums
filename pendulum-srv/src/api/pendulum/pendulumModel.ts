@@ -13,6 +13,7 @@ export type ControlCommand = 'start' | 'pause' | 'stop' | 'restart'
 const VALID_COMMANDS = new Set<ControlCommand>(['start', 'pause', 'stop', 'restart'])
 
 export interface ConfigBody {
+  anchor?: number
   angle?: number
   mass?: number
   stringLength?: number
@@ -22,6 +23,10 @@ export function parseConfigBody(body: unknown): ConfigBody | null {
   if (typeof body !== 'object' || body === null) return null
   const b = body as Record<string, unknown>
   const result: ConfigBody = {}
+  if (b.anchor !== undefined) {
+    if (typeof b.anchor !== 'number') return null
+    result.anchor = b.anchor
+  }
   if (b.angle !== undefined) {
     if (typeof b.angle !== 'number') return null
     result.angle = b.angle

@@ -53,7 +53,9 @@ export class PendulumEngine extends EventEmitter {
     this.start()
   }
 
-  configure(updates: Partial<Pick<PendulumConfig, 'initialAngle' | 'mass' | 'stringLength'>>): void {
+  configure(
+    updates: Partial<Pick<PendulumConfig, 'anchor' | 'initialAngle' | 'mass' | 'stringLength'>>,
+  ): void {
     if (this.state.status !== 'stopped')
       throw new Error('Cannot configure while running — stop the pendulum first')
     this.config = { ...this.config, ...updates }
