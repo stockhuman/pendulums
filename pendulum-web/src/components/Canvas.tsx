@@ -7,11 +7,7 @@ export default function Canvas({ children }: { children?: React.ReactNode }) {
     <StyledCanvas>
       <color attach="background" args={[0x111111]} />
       <Environment preset="city" />
-      {children}
-      <mesh position={[0, -5, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[1000, 100]} />
-        <meshStandardMaterial color="#1b1717" roughness={1} />
-      </mesh>
+      <group position={[0, 1, 0]}>{children}</group>
     </StyledCanvas>
   )
 }
