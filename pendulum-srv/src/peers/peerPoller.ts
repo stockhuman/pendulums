@@ -46,8 +46,13 @@ export class PeerPoller {
     this.config.onAllPeersRestarted()
   }
 
+  async refreshConfigs(): Promise<void> {
+    await this.fetchPeerConfigs()
+  }
+
   private async fetchPeerConfigs(): Promise<void> {
     const ownCfg = this.getOwnConfig?.()
+    this.unreachablePeers.clear()
     await Promise.allSettled(
       this.config.peerUrls.map(async (url) => {
         try {

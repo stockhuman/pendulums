@@ -52,6 +52,7 @@ export function postConfig(req: Request, res: Response): void {
     ...(body.mass !== undefined && { mass: body.mass }),
     ...(body.stringLength !== undefined && { stringLength: body.stringLength }),
   })
+  poller.refreshConfigs()
   res.json({ ok: true, state: engine.getState() })
 }
 
