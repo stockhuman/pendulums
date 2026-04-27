@@ -27,8 +27,8 @@ function App() {
 }
 
 const Pendulums = () => {
-  const snap = useSnapshot(store)
-  return snap.servers.map((_, i) => <Pendulum key={i} index={i} />)
+  const count = useSnapshot(store).servers.length
+  return Array.from({ length: count }, (_, i) => <Pendulum key={i} index={i} />)
 }
 
 export default App
