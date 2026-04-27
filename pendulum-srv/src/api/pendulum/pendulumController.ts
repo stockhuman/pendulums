@@ -25,7 +25,7 @@ export function postControl(req: Request, res: Response): void {
       engine.stop()
       break
     case 'restart':
-      poller.receiveRestart(req.ip ?? 'unknown')
+      poller.receiveRestart()
       break
   }
 
