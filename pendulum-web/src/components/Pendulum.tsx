@@ -20,6 +20,8 @@ export default function Pendulum({ index }: Props) {
   const dummy = useMemo(() => new Object3D(), [])
 
   const isDraggingRef = useRef(false)
+  const dragStartStringLengthRef = useRef(1)
+  const dragStringLengthRef = useRef<number | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [showUI, setShowUI] = useState(false)
 
@@ -34,6 +36,7 @@ export default function Pendulum({ index }: Props) {
   const config = useSnapshot(store.servers[index]).config
   const anchorX = config?.anchor ?? 0
   const mass = config?.mass ?? 1
+  const initialAngle = config?.initialAngle ?? 0
   const stringLength = config?.stringLength ?? 1
   const LINKS = Math.max(Math.floor(stringLength * 20 - mass * 0.15), 2)
 
@@ -50,21 +53,28 @@ export default function Pendulum({ index }: Props) {
       raycaster.setFromCamera(pointer, camera)
       if (raycaster.ray.intersectPlane(dragPlane, intersection)) {
         handleRef.current.position.set(intersection.x, 0, 0)
+        dragStringLengthRef.current = Math.max(0.1, dragStartStringLengthRef.current - intersection.y)
       }
     }
 
     const onPointerUp = async () => {
       if (!isDraggingRef.current) return
       const newAnchor = handleRef.current.position.x
+      const newStringLength = dragStringLengthRef.current
       isDraggingRef.current = false
+      dragStringLengthRef.current = null
       setIsDragging(false)
 
       const entry = store.servers[index]
-      if (!entry) return
+      if (!entry || !entry.config) return
       const wasRunning = entry.state?.status === 'running'
       if (wasRunning) await sendControl(entry.url, 'stop')
-      await sendConfig(entry.url, { anchor: newAnchor })
-      if (entry.config) entry.config.anchor = newAnchor
+      await sendConfig(entry.url, {
+        anchor: newAnchor,
+        stringLength: newStringLength ?? entry.config.stringLength,
+      })
+      entry.config.anchor = newAnchor
+      if (newStringLength != null) entry.config.stringLength = newStringLength
       if (wasRunning) await sendControl(entry.url, 'start')
     }
 
@@ -82,6 +92,11 @@ export default function Pendulum({ index }: Props) {
     e.stopPropagation()
     isDraggingRef.current = true
     setIsDragging(true)
+    const entry = store.servers[index]
+    if (entry?.config) {
+      dragStartStringLengthRef.current = entry.config.stringLength
+      dragStringLengthRef.current = entry.config.stringLength
+    }
   }
 
   const wheelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -98,7 +113,7 @@ export default function Pendulum({ index }: Props) {
     const entry = store.servers[index]
     if (!entry || !entry.config) return
 
-    entry.config.stringLength = entry.config.stringLength + e.deltaY * 0.001
+    entry.config.mass = Math.max(0.1, entry.config.mass + e.deltaY * 0.001)
 
     if (wheelTimerRef.current) clearTimeout(wheelTimerRef.current)
     wheelTimerRef.current = setTimeout(async () => {
@@ -106,7 +121,7 @@ export default function Pendulum({ index }: Props) {
       if (!settled || !settled.config) return
       const wasRunning = settled.state?.status === 'running'
       if (wasRunning) await sendControl(settled.url, 'stop')
-      await sendConfig(settled.url, { stringLength: settled.config.stringLength })
+      await sendConfig(settled.url, { mass: settled.config.mass })
       if (wasRunning) await sendControl(settled.url, 'start')
     }, 300)
   }
@@ -118,7 +133,8 @@ export default function Pendulum({ index }: Props) {
     groupRef.current.position.x = isDraggingRef.current ? handleRef.current.position.x : anchorX
 
     const lx = isDraggingRef.current ? 0 : state ? state.x - anchorX : 0
-    const ly = isDraggingRef.current ? -stringLength : state ? state.y : -stringLength
+    const dragLen = isDraggingRef.current ? (dragStringLengthRef.current ?? stringLength) : stringLength
+    const ly = isDraggingRef.current ? -dragLen : state ? state.y : -stringLength
 
     bobRef.current.position.set(lx, ly, 0)
 
@@ -167,7 +183,9 @@ export default function Pendulum({ index }: Props) {
               mass={mass}
               anchor={anchorX}
               handleRef={handleRef}
+              angle={initialAngle}
               isDraggingRef={isDraggingRef}
+              dragStringLengthRef={dragStringLengthRef}
             />
           </Html>
         )}
@@ -192,19 +210,23 @@ const PendulumDetails = ({
   stringLength = 1,
   mass = 1,
   anchor = 0,
+  angle = 0,
   handleRef,
   isDraggingRef,
+  dragStringLengthRef,
 }: {
   index: number
   stringLength?: number
   mass?: number
   anchor?: number
+  angle?: number
   handleRef: RefObject<Mesh>
   isDraggingRef: RefObject<boolean>
+  dragStringLengthRef: RefObject<number | null>
 }) => {
   const anchorSpanRef = useRef<HTMLSpanElement>(null)
+  const lengthSpanRef = useRef<HTMLSpanElement>(null)
 
-  // All this for performance lol
   useEffect(() => {
     let raf: number
     const tick = () => {
@@ -212,20 +234,27 @@ const PendulumDetails = ({
         const live = isDraggingRef.current ? (handleRef.current?.position.x ?? anchor) : anchor
         anchorSpanRef.current.textContent = live.toFixed(2) + 'm'
       }
+      if (lengthSpanRef.current) {
+        const live = isDraggingRef.current ? (dragStringLengthRef.current ?? stringLength) : stringLength
+        lengthSpanRef.current.textContent = live.toFixed(2) + 'm'
+      }
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [anchor, handleRef, isDraggingRef])
+  }, [anchor, stringLength, handleRef, isDraggingRef, dragStringLengthRef])
 
   return (
     <MiniHUD>
       <h3>Pendulum {index + 1}</h3>
-      <div>Length: {stringLength.toFixed(2)}m</div>
+      <div>
+        Length: <span ref={lengthSpanRef}>{stringLength.toFixed(2)}m</span>
+      </div>
       <div>Mass: {mass.toFixed(2)}kg</div>
       <div>
         Anchor: <span ref={anchorSpanRef}>{anchor.toFixed(2)}m</span>
       </div>
+      <div>Angle: {angle.toFixed(2)}°</div>
     </MiniHUD>
   )
 }
