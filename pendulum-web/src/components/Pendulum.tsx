@@ -147,6 +147,21 @@ export default function Pendulum({ index }: Props) {
     chainRef.current.instanceMatrix.needsUpdate = true
   })
 
+  // Removed for submission, needs more work
+  // const handleArcClick = async (e: ThreeEvent<MouseEvent>) => {
+  //   e.stopPropagation()
+  //   const pt = e.pointOnLine
+  //   if (!pt) return
+  //   const newAngle = Math.atan2(pt.x, -pt.y)
+  //   const entry = store.servers[index]
+  //   if (!entry || !entry.config) return
+  //   const wasRunning = entry.state?.status === 'running'
+  //   if (wasRunning) await sendControl(entry.url, 'stop')
+  //   await sendConfig(entry.url, { initialAngle: newAngle })
+  //   entry.config.initialAngle = newAngle
+  //   if (wasRunning) await sendControl(entry.url, 'start')
+  // }
+
   const color = useMemo(() => {
     const m = config?.mass ?? 1
     const angle = config?.initialAngle ?? 0
@@ -200,6 +215,21 @@ export default function Pendulum({ index }: Props) {
           <sphereGeometry args={[0.15 * mass, 32, 32]} />
           <meshStandardMaterial color={color} roughness={0.3} metalness={1} />
         </mesh>
+        {/* <CubicBezierLine
+          start={[-stringLength, 0, 0]}
+          midA={[-stringLength, -(4 / 3) * stringLength, 0]}
+          midB={[stringLength, -(4 / 3) * stringLength, 0]}
+          end={[stringLength, 0, 0]}
+          color="white"
+          lineWidth={3}
+          onClick={handleArcClick}
+        /> */}
+        {(showUI || isDragging) && (
+          <mesh position={[Math.sin(initialAngle) * stringLength, -Math.cos(initialAngle) * stringLength, 0]}>
+            <sphereGeometry args={[0.04, 16, 16]} />
+            <meshStandardMaterial color="white" opacity={0.7} transparent />
+          </mesh>
+        )}
       </group>
     </>
   )
@@ -254,7 +284,7 @@ const PendulumDetails = ({
       <div>
         Anchor: <span ref={anchorSpanRef}>{anchor.toFixed(2)}m</span>
       </div>
-      <div>Angle: {angle.toFixed(2)}°</div>
+      <div>Angle: {(angle * (180 / Math.PI)).toFixed(1)}°</div>
     </MiniHUD>
   )
 }
