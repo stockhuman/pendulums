@@ -1,18 +1,10 @@
 import { useState } from 'react'
-import { useSnapshot } from 'valtio'
 import styled from 'styled-components'
 import { store, saveUrls, addServer, removeServer, setServerUrl } from '../store/servers'
 import { connect, disconnect, reconnect } from '../services/sse'
 
-export default function Settings() {
-  const snap = useSnapshot(store)
-  const [open, setOpen] = useState(false)
-  const [draft, setDraft] = useState<string[]>([])
-
-  const openPanel = () => {
-    setDraft(snap.servers.map((s) => s.url))
-    setOpen(true)
-  }
+export default function Settings({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [draft, setDraft] = useState<string[]>(() => store.servers.map((s) => s.url))
 
   const apply = () => {
     // Remove servers that were deleted
@@ -33,65 +25,53 @@ export default function Settings() {
       }
     })
     saveUrls(draft)
-    setOpen(false)
-  }
-
-  if (!open) {
-    return <ToggleButton onClick={openPanel}>Servers</ToggleButton>
+    onClose()
   }
 
   return (
-    <Panel>
-      <PanelTitle>Pendulum Servers</PanelTitle>
-      {draft.map((url, i) => (
-        <Row key={i}>
-          <Label>{i + 1}</Label>
-          <Input
-            value={url}
-            onChange={(e) => setDraft(draft.map((u, j) => (j === i ? e.target.value : u)))}
-            placeholder="http://localhost:300x"
-          />
-          <RemoveButton onClick={() => setDraft(draft.filter((_, j) => j !== i))}>✕</RemoveButton>
-        </Row>
-      ))}
-      <AddButton onClick={() => setDraft([...draft, 'http://localhost:300' + (draft.length + 1)])}>
-        + Add server
-      </AddButton>
-      <Actions>
-        <ApplyButton onClick={apply}>Apply</ApplyButton>
-        <CancelButton onClick={() => setOpen(false)}>Cancel</CancelButton>
-      </Actions>
-    </Panel>
+    <Sidebar $open={open}>
+      <SidebarInner>
+        <PanelTitle>Pendulum Servers</PanelTitle>
+        {draft.map((url, i) => (
+          <Row key={i}>
+            <Label>{i + 1}</Label>
+            <Input
+              value={url}
+              onChange={(e) => setDraft(draft.map((u, j) => (j === i ? e.target.value : u)))}
+              placeholder="http://localhost:300x"
+            />
+            <RemoveButton onClick={() => setDraft(draft.filter((_, j) => j !== i))}>✕</RemoveButton>
+          </Row>
+        ))}
+        <AddButton onClick={() => setDraft([...draft, 'http://localhost:300' + (draft.length + 1)])}>
+          + Add server
+        </AddButton>
+        <Actions>
+          <ApplyButton onClick={apply}>Apply</ApplyButton>
+          <CancelButton onClick={onClose}>Cancel</CancelButton>
+        </Actions>
+      </SidebarInner>
+    </Sidebar>
   )
 }
 
-const ToggleButton = styled.button`
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  color: #cbd5e1;
-  padding: 0.5rem 1rem;
-  background: none;
-  border: none;
-  cursor: pointer;
-  z-index: 10;
-  font-family: inherit;
-  text-transform: uppercase;
-  &:hover {
-    color: #ffffff;
-  }
+const PANEL_WIDTH = 300
+
+const Sidebar = styled.div<{ $open: boolean }>`
+  width: ${({ $open }) => ($open ? `${PANEL_WIDTH}px` : '0')};
+  overflow: hidden;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
 `
 
-const Panel = styled.div`
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  padding: 1rem;
-  min-width: 320px;
-  z-index: 10;
+const SidebarInner = styled.div`
+  width: ${PANEL_WIDTH}px;
+  height: 100%;
+  padding: 1rem 0rem 1rem 0.75rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  box-sizing: border-box;
 `
 
 const PanelTitle = styled.h3`
@@ -99,7 +79,7 @@ const PanelTitle = styled.h3`
   color: #e2e8f0;
   font-size: 0.9rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-weight: normal;
 `
 
 const Row = styled.div`
