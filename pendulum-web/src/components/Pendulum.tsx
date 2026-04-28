@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Group, Object3D, Plane, Raycaster, Vector2, Vector3, type InstancedMesh, type Mesh } from 'three'
 import { useSnapshot } from 'valtio'
 import { store } from '../store/servers'
-import { Outlines } from '@react-three/drei'
+import { Html, Outlines } from '@react-three/drei'
 import { sendControl, sendConfig } from '../services/api'
 
 interface Props {
@@ -20,6 +20,7 @@ export default function Pendulum({ index }: Props) {
 
   const isDraggingRef = useRef(false)
   const [isDragging, setIsDragging] = useState(false)
+  const [showUI, setShowUI] = useState(false)
 
   const { camera, gl } = useThree()
 
@@ -82,6 +83,33 @@ export default function Pendulum({ index }: Props) {
     setIsDragging(true)
   }
 
+  const wheelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(
+    () => () => {
+      if (wheelTimerRef.current) clearTimeout(wheelTimerRef.current)
+    },
+    [],
+  )
+
+  const onWheel = (e: WheelEvent) => {
+    e.stopPropagation()
+    const entry = store.servers[index]
+    if (!entry || !entry.config) return
+
+    entry.config.stringLength = entry.config.stringLength + e.deltaY * 0.001
+
+    if (wheelTimerRef.current) clearTimeout(wheelTimerRef.current)
+    wheelTimerRef.current = setTimeout(async () => {
+      const settled = store.servers[index]
+      if (!settled || !settled.config) return
+      const wasRunning = settled.state?.status === 'running'
+      if (wasRunning) await sendControl(settled.url, 'stop')
+      await sendConfig(settled.url, { stringLength: settled.config.stringLength })
+      if (wasRunning) await sendControl(settled.url, 'start')
+    }, 300)
+  }
+
   useFrame(() => {
     const { state } = store.servers[index] ?? {}
     if (!groupRef.current || !bobRef.current || !chainRef.current) return
@@ -119,14 +147,22 @@ export default function Pendulum({ index }: Props) {
         onPointerDown={onPointerDown}
         onPointerEnter={() => {
           document.body.style.cursor = 'grab'
+          setShowUI(true)
         }}
         onPointerLeave={() => {
           document.body.style.cursor = 'default'
+          setShowUI(false)
         }}
+        onWheel={onWheel}
       >
-        <cylinderGeometry args={[0.03, 0.03, 0.12, 32]} />
+        <cylinderGeometry args={[0.05, 0.05, 0.16, 32]} />
         <meshStandardMaterial color="#cdcde8" roughness={0.3} metalness={1} />
         <Outlines thickness={isDragging ? 2 : 0} color="hotpink" />
+        {showUI && (
+          <Html position={[0, 0, 0]} scale={0.5} color="white" pointerEvents="none">
+            <PendulumDetails index={index} stringLength={stringLength} mass={mass} anchor={anchorX} />
+          </Html>
+        )}
       </mesh>
 
       <group ref={groupRef}>
@@ -140,5 +176,26 @@ export default function Pendulum({ index }: Props) {
         </mesh>
       </group>
     </>
+  )
+}
+
+const PendulumDetails = ({
+  index,
+  stringLength = 1,
+  mass = 1,
+  anchor = 0,
+}: {
+  index: number
+  stringLength?: number
+  mass?: number
+  anchor?: number
+}) => {
+  return (
+    <div>
+      <h3>Pendulum {index + 1}</h3>
+      <div>Length: {stringLength.toFixed(2)}m</div>
+      <div>Mass: {mass.toFixed(2)}kg</div>
+      <div>Anchor: {anchor.toFixed(2)}m</div>
+    </div>
   )
 }
