@@ -70,13 +70,15 @@ const ToggleButton = styled.button`
   top: 1rem;
   right: 1rem;
   color: #cbd5e1;
-  border: 1px solid #475569;
-  border-radius: 6px;
-  padding: 0.4rem 0.8rem;
+  padding: 0.5rem 1rem;
+  background: none;
+  border: none;
   cursor: pointer;
   z-index: 10;
+  font-family: inherit;
+  text-transform: uppercase;
   &:hover {
-    background: #475569;
+    color: #ffffff;
   }
 `
 

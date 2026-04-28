@@ -1,11 +1,12 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { Group, Object3D, Plane, Raycaster, Vector2, Vector3, type InstancedMesh, type Mesh } from 'three'
 import { useSnapshot } from 'valtio'
 import { store } from '../store/servers'
 import { Html, Outlines } from '@react-three/drei'
 import { sendControl, sendConfig } from '../services/api'
+import styled from 'styled-components'
 
 interface Props {
   index: number
@@ -158,9 +159,16 @@ export default function Pendulum({ index }: Props) {
         <cylinderGeometry args={[0.05, 0.05, 0.16, 32]} />
         <meshStandardMaterial color="#cdcde8" roughness={0.3} metalness={1} />
         <Outlines thickness={isDragging ? 2 : 0} color="hotpink" />
-        {showUI && (
-          <Html position={[0, 0, 0]} scale={0.5} color="white" pointerEvents="none">
-            <PendulumDetails index={index} stringLength={stringLength} mass={mass} anchor={anchorX} />
+        {(showUI || isDragging) && (
+          <Html position={[1, 0, 0]} color="white" pointerEvents="none">
+            <PendulumDetails
+              index={index}
+              stringLength={stringLength}
+              mass={mass}
+              anchor={anchorX}
+              handleRef={handleRef}
+              isDraggingRef={isDraggingRef}
+            />
           </Html>
         )}
       </mesh>
@@ -184,18 +192,54 @@ const PendulumDetails = ({
   stringLength = 1,
   mass = 1,
   anchor = 0,
+  handleRef,
+  isDraggingRef,
 }: {
   index: number
   stringLength?: number
   mass?: number
   anchor?: number
+  handleRef: RefObject<Mesh>
+  isDraggingRef: RefObject<boolean>
 }) => {
+  const anchorSpanRef = useRef<HTMLSpanElement>(null)
+
+  // All this for performance lol
+  useEffect(() => {
+    let raf: number
+    const tick = () => {
+      if (anchorSpanRef.current) {
+        const live = isDraggingRef.current ? (handleRef.current?.position.x ?? anchor) : anchor
+        anchorSpanRef.current.textContent = live.toFixed(2) + 'm'
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [anchor, handleRef, isDraggingRef])
+
   return (
-    <div>
+    <MiniHUD>
       <h3>Pendulum {index + 1}</h3>
       <div>Length: {stringLength.toFixed(2)}m</div>
       <div>Mass: {mass.toFixed(2)}kg</div>
-      <div>Anchor: {anchor.toFixed(2)}m</div>
-    </div>
+      <div>
+        Anchor: <span ref={anchorSpanRef}>{anchor.toFixed(2)}m</span>
+      </div>
+    </MiniHUD>
   )
 }
+
+const MiniHUD = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200px;
+  transform: translate(-50%, -50%);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+`
