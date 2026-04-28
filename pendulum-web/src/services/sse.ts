@@ -25,7 +25,17 @@ export function connect(index: number): void {
     store.servers[index].connected = true
   }
   source.onmessage = (e) => {
-    store.servers[index].state = JSON.parse(e.data)
+    const data = JSON.parse(e.data)
+    const entry = store.servers[index]
+    if (!entry.state) {
+      entry.state = data
+    } else {
+      entry.state.angle = data.angle
+      entry.state.angularVelocity = data.angularVelocity
+      entry.state.x = data.x
+      entry.state.y = data.y
+      entry.state.status = data.status
+    }
   }
   source.onerror = () => {
     store.servers[index].connected = false

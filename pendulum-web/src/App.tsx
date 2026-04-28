@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import styled from 'styled-components'
 import Canvas from './components/Canvas'
 import Settings from './components/Settings'
@@ -10,32 +10,62 @@ import { store } from './store/servers'
 import Bar from './components/Bar'
 
 function App() {
+  const [settingsOpen, setSettingsOpen] = useState(false)
+
   useEffect(() => {
     connectAll()
   }, [])
 
   return (
     <AppWrapper>
-      <Settings />
-      <Canvas>
-        <Bar />
-        <Pendulums />
-      </Canvas>
-      <HUD />
+      <CanvasArea>
+        <Canvas>
+          <Bar />
+          <Pendulums />
+        </Canvas>
+        <HUD />
+        <ToggleButton onClick={() => setSettingsOpen(!settingsOpen)}>
+          {settingsOpen ? 'Close' : 'Servers'}
+        </ToggleButton>
+      </CanvasArea>
+      <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </AppWrapper>
   )
 }
 
 const Pendulums = () => {
-  const snap = useSnapshot(store)
-  return snap.servers.map((_, i) => <Pendulum key={i} index={i} />)
+  const count = useSnapshot(store).servers.length
+  return Array.from({ length: count }, (_, i) => <Pendulum key={i} index={i} />)
 }
 
 export default App
 
 const AppWrapper = styled.div`
-  position: relative;
+  display: flex;
   background: #1e293b;
   height: calc(100vh - 1rem);
   padding: 0.5rem;
+`
+
+const CanvasArea = styled.div`
+  flex: 1;
+  position: relative;
+  min-width: 0;
+`
+
+const ToggleButton = styled.button`
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  color: #cbd5e1;
+  padding: 0.5rem 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  z-index: 10;
+  font-family: inherit;
+  text-transform: uppercase;
+  &:hover {
+    color: #ffffff;
+  }
 `
